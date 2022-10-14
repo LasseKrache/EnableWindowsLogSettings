@@ -10,6 +10,7 @@
 :: You need to run this with local Administrator or SYSTEM privileges.
 
 :: Increase or decrease the log sizes as you see fit (in bytes of 64kb blocks):
+:: 4 GB: 4294901760 (mehr kann man via GUI nicht eintragen)
 :: 2 GB: 2147483648
 :: 1 GB: 1073741824
 :: 512 MB: 536870912
