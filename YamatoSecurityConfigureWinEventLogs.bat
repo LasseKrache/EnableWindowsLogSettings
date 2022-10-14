@@ -24,7 +24,8 @@
 :: Note: you should also increase the max. size of the Sysmon log to 1 GB if you use sysmon.
 :: wevtutil sl Security /ms:1073741824 (deaktivieren wir da bereits in GPO vorhanden, cg)
 wevtutil sl Microsoft-Windows-PowerShell/Operational /ms:1073741824
-wevtutil sl Microsoft-Windows-Sysmon/Operational /ms:1073741824 (aktiviert da Sysmon verwendet wird, cg)
+:: (aktiviert da Sysmon verwendet wird, cg)
+wevtutil sl Microsoft-Windows-Sysmon/Operational /ms:1073741824 
 
 :: Set all other important logs to 128 MB. Increase or decrease to fit your environment.
 :: wevtutil sl System /ms:134217728 (deaktivieren wir da bereits in GPO vorhanden, cg)
