@@ -19,9 +19,18 @@ Windowsのイベントログの設定と監視に関するガイドで、Sigma�
     - **注意: 必要に応じてスクリプトをカスタマイズし、本番環境で導入する前に必ずテストしてください！**
 * 100%のSigmaルールを利用したい方は、[sysmon](https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon)を導入する必要があります。（お勧め！）
 
+# 関連プロジェクト
+
+* [Hayabusa](https://github.com/Yamato-Security/hayabusa/blob/main/README-Japanese.md) - Sigmaベースの脅威ハンティングと、Windowsイベントログのファストフォレンジックタイムライン生成ツール。
+* [Hayabusa Rules](https://github.com/Yamato-Security/hayabusa-rules/blob/main/README-Japanese.md) - Hayabusaのための検知ルール。
+* [Hayabusa Sample EVTXs](https://github.com/Yamato-Security/hayabusa-sample-evtx) - Hayabusa/Sigma検出ルールをテストするためのサンプルevtxファイル。
+* [Takajo](https://github.com/Yamato-Security/takajo/blob/main/README-Japanese.md) - Hayabusa結果の解析ツール。
+* [WELA (Windows Event Log Analyzer)](https://github.com/Yamato-Security/WELA/blob/main/README-Japanese.md) - PowerShellで書かれたWindowsイベントログの解析ツール。
+
 ## 目次
 
 - [TLDR](#tldr)
+- [関連プロジェクト](#関連プロジェクト)
   - [目次](#目次)
 - [作者](#作者)
 - [コントリビュータ](#コントリビュータ)
@@ -85,6 +94,8 @@ PRは歓迎され、喜んでコントリビューターとして追加させて
 # コントリビュータ
 
 * DustInDark: 日本語版の修正。
+* Fukusuke Takahashi (fukusuket): 和訳と修正。
+* LasseKrache: Batchスクリプトのバグの指摘。
 
 # Acknowledgements
 

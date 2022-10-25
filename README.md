@@ -19,9 +19,18 @@ This is yet another guide on properly configuring and monitoring Windows event l
     - **Warning: make sure you customize the script to your needs and test before using in production!**
 * Install [sysmon](https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon) to get full coverage. (**Highly recommended!**)
 
+# Companion Projects
+
+* [Hayabusa](https://github.com/Yamato-Security/hayabusa) - sigma-based threat hunting and fast forensics timeline generator for Windows event logs.
+* [Hayabusa Rules](https://github.com/Yamato-Security/hayabusa-rules) - detection rules for hayabusa.
+* [Hayabusa Sample EVTXs](https://github.com/Yamato-Security/hayabusa-sample-evtx) - Sample evtx files to use for testing hayabusa/sigma detection rules.
+* [Takajo](https://github.com/Yamato-Security/takajo) - Analyzer for hayabusa results.
+* [WELA (Windows Event Log Analyzer)](https://github.com/Yamato-Security/WELA) - An analyzer for Windows event logs written in PowerShell.
+
 # Table of Contents
 
 - [TLDR](#tldr)
+- [Companion Projects](#companion-projects)
 - [Table of Contents](#table-of-contents)
 - [Author](#author)
 - [Contributors](#contributors)
@@ -82,7 +91,8 @@ If you find any of this useful, please give a star on GitHub as it will probably
 
 # Contributors
 
-* DustInDark: Japanese translation fixes.
+* DustInDark (hitenkoku): Japanese translation fixes.
+* Fukusuke Takahashi (fukusuket): Japanese translations and fixes.
 * LasseKrache: Pointing out a bug in the batch script.
 
 # Acknowledgements
@@ -269,23 +279,69 @@ File: `System.evtx`
 
 Default settings: `Enabled. 20 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 Malware will often install services for persistence, local privilege esclation, etc... which can be found in this log.
 It is also possible to detect various vulnerabilities being exploited here.
 
+> **Note: One thing to watch out specific to the System log is that parameters in fields are sometimes translated to the local language so signatures that use only English may not detect on non-English systems. For example, on an English system in the parameters for EID 7045, it will record `Enabled` while in Japanese it might record `有効`.**
+
+> **Note: Just like the `Application` log, multiple providers will log to the same event ID so you may need to filter on provider name as well as the channel. An example is event ID `1` which gets used by various providers for different events.**
+
+Important Event IDs:
+
+| Event ID | Description | Sigma Rules | Hayabusa Rules | Level | Notes |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | System Sleep/Hibernation | 0 | Not Yet. | Info | Provider: `Power-Troubleshooter` |
+| 1 | System Time Changed | 0 | Not Yet. | Info | Provider: `Kernel-General` |
+| 12 | OS Startup | 0 | Not Yet. | Info | |
+| 13 | OS Shutdown | 0 | Not Yet. | Info | |
+| 16 | Registry Hive Access History Cleared | 2 | Not Yet. | High~Crit | Password dumpers may clear access history after dumping passwords hashes from the SAM registry key. This also happens normally though so need to filter out FPs. |
+| 55 | NTFS Filesystem Corrupted | 1 | No | High | Can detect attacks against NTFS vulnerabilities. |
+| 104 | System Event Log Cleared | 1 | Yes | Med | |
+| 6005 | Event Log Service Started | 0 | Yes | Info | |
+| 6006 | Event Log Service Stopped | 0 | Yes | Info | |
+| 6008 | Unexpected Shutdown | 0 | Yes | Info | |
+| 6038 | NTLMv1 Was Used | 1 | No | Low | |
+| 7031 | Service Crashed | 0 | Yes | Low | |
+| 7034 | Service Crashed | 0 | Yes | Low | |
+| 7036 | Service Started/Stopped | 2 | Yes | Info~High | Can be used to detect someone stopping Defender, etc... |
+| 7040 | Service Startup Type Changed | 0 | Yes | Info | Can indicate an attacker disabled a service. |
+| 7045 | Service Installation | 37 | Yes | Info~Crit | This is the most important System event ID as malware often installs itself as a service or abuses services. |
+| 20001 | New PNP Device | 0 | Yes | Info~? | Level will depend on if USB devices are allowed or not. Logs only the first time a device has been plugged in. Non-USB PNP device events are very noisy so should probably be filtered out.  |
+
 ## Application log (16 sigma rules)
+
+This log is mostly noise but you may be able to find some important evidence here.
+Some 3rd-party anti-virus software will log to here.
+One thing to be careful about with the Application log is that different vendors will use the same event IDs for different events so you should also filter on not just Event IDs but Provider Names as well.
 
 File: `Application.evtx`
 
 Default settings: `Enabled. 20 MB`
 
-This log is mostly noise but you may be able to find some important evidence here.
-One thing to be careful about is that different vendors will use the same event IDs for different events so you should also filter on not just Event IDs but Provider Names as well.
+Recommended settings: `Enabled. 128 MB+`
+
+Important Event IDs:
+
+| Event ID | Provider | Description | Sigma Rules | Hayabusa Rules | Level | Notes |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | `Audit-CVE`, `Microsoft-Windows-Audit-CVE` | Known Vulnerability (CVE) Exploit Attempt | 1 | No | Critical | Detects events generated by user-mode applications when they call the CveEventWrite API when a known vulnerability is trying to be exploited. MS started using this log in 2020/01 with CVE-2020-0601 (a Windows CryptoAPI vulnerability). Unfortunately, that is about the only instance of CVEs being written to this log.  |
+| 325 | `ESENT` | ESE DB Created | 2 | No | Info~Crit | Detects when a process creates an ESE database. This is used by a variety of things such as for Exchange, AD, Certificate Services, SRUM, etc... The most important ESE DB for security is NTDS.dit, the file of all domain users' password hashes located on domain controllers. There are two sigma rules to detect dumping of NTDS.dit, however, it may be a false positive if an administrator uses ntdsutil for backups or when shadow copies are created.  |
+| 326 | `ESENT` | ESE DB Attached | 1 | No | Info~Crit | May be able to detect access to NTDS.dit.  |
+| 1000, 1001 | `Application Error`, `Windows Error Reporting` | Application Error | 1 | No | Info~High |  |
+| 1034, 11724 | `MsiInstaller` | Application Uninstalled | 1 | No | Info~Low | |
+| 1040 | `MsiInstaller` | Application Installation | 1 | No | Info~Med |  |
+| 33205 | `MSSQLSERVER` | SQL Audit Event | 6 | No | Info~High | Can detect MSSQL backdoors, SQL/command injection, etc...   |
+
 
 ## Windows Defender Operational log (10 sigma rules)
  
 File: `Microsoft-Windows-Windows Defender%4Operational.evtx`
 
 Default settings: `Enabled. 1 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 You can detect not only Windows Defender alerts (which are important to monitor), but also exclusions being added, tamper protection being disabled, history deleted, etc...
 
@@ -295,6 +351,8 @@ File: `Microsoft-Windows-Bits-Client%4Operational.evtx`
 
 Default settings: `Enabled. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 Bitsadmin.exe is a popular [lolbin](https://lolbas-project.github.io/lolbas/Binaries/Bitsadmin/) that attackers will abuse for downloading and executing malware.
 You may find evidence of that in this log, although there will be a lot of false positives to watch out for.
 
@@ -303,6 +361,8 @@ You may find evidence of that in this log, although there will be a lot of false
 File: `Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx`
 
 Default settings: `Enabled? 1 MB`
+
+Recommended settings: `Enabled. 256 MB+`
 
 You can find evidence of firewall rules being added/modified/deleted here.
 Malware will often add firewall rules to make sure they can communicate with their C2 server, add proxy rules for lateral movement, etc...
@@ -327,6 +387,8 @@ Files: `Microsoft-Windows-Security-Mitigations%4KernelMode.evtx`, `Microsoft-Win
 
 Default settings: `Enabled. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 At the moment there are only 2 sigma rules for these logs but you should probably be collecting and monitoring all of the Exploit Protection, Network Protection, Controlled Folder Access and Attack Surface Reduction logs (About 40+ Event IDs). 
 
 Unfortunately the Attack Surface Reduction logs (previously WDEG(Windows Defender Exploit Guard) and EMET) are spread across multiple logs and require complex XML queries to search them.
@@ -343,17 +405,23 @@ File: `Microsoft-Windows-PrintService%4Admin.evtx`
 
 Default settings: `Enabled. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 ### Operational (1 sigma rule)
 
 File: `Microsoft-Windows-PrintService%4Operational.evtx`
 
 Default settings: `Disabled. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 ## SMBClient Security log (2 sigma rules) 
 
 File: `Microsoft-Windows-SmbClient%4Security.evtx`
 
 Default settings: `Enabled. 8 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 Used to attempt to detect PrintNightmare (Suspicious Rejected SMB Guest Logon From IP) and users mounting hidden shares.
 
@@ -363,6 +431,8 @@ Files: `Microsoft-Windows-AppLocker%4MSI and Script.evtx`, `Microsoft-Windows-Ap
 
 Default settings: `Enabled if AppLocker is enabled? 1 MB`
 
+Recommended settings: `Enabled. 256 MB+`
+
 This is important to make sure is enabled and monitored if you are using AppLocker.
 
 ## CodeIntegrity Operational log (1 sigma rule)
@@ -370,6 +440,8 @@ This is important to make sure is enabled and monitored if you are using AppLock
 File: `Microsoft-Windows-CodeIntegrity%4Operational.evtx`
 
 Default settings: `Enabled. 1 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 Check this log to detect driver load events that get blocked by Windows code integrity checks, which may indicate a malicious driver that faild to load.
 
@@ -379,6 +451,8 @@ File: `Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx`
 
 Default settings: `Enabled. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 Evidence of diagcab packages being used for exploitation may be found here.
 
 ## DriverFrameworks-UserMode Operational log  (1 sigma rule) 
@@ -386,6 +460,8 @@ Evidence of diagcab packages being used for exploitation may be found here.
 Files: `Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx`
 
 Default settings: `No Auditing. 1 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 Detects plugged in USB devices.
 
@@ -395,6 +471,8 @@ File: `Microsoft-Windows-WMI-Activity%4Operational.evtx`
 
 Default settings: `Enabled on Win10/2016+. 1 MB`
 
+Recommended settings: `Enabled. 128 MB+`
+
 This is important to monitor as attackers will often exploit WMI for persistence and lateral movement.
 
 ## TerminalServices-LocalSessionManager Operational log  (1 sigma rule) 
@@ -402,6 +480,8 @@ This is important to monitor as attackers will often exploit WMI for persistence
 File: `Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx`
 
 Default settings: `Enabled. 1 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 Detects when ngrok, a reverse proxy tool, forwards traffic to the local RDP port to bypass firewalls.
 
@@ -412,5 +492,7 @@ Link: [Bypassing Network Restrictions Through RDP Tunneling](https://www.mandian
 File: `Microsoft-Windows-TaskScheduler%4Operational.evtx`
 
 Default settings: `Disabled. 1 MB`
+
+Recommended settings: `Enabled. 128 MB+`
 
 Attackers will often abuse tasks for persistence and lateral movement so this should be enabled.
