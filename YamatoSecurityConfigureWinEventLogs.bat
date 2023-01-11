@@ -20,16 +20,15 @@
 :: 256 MB: 268435456
 :: 128 MB: 134217728
 
-:: Set Security and PowerShell log maximum file size to 1 GB
-:: Note: you should also increase the max. size of the Sysmon log to 1 GB if you use sysmon.
-:: wevtutil sl Security /ms:1073741824 (deaktivieren wir da bereits in GPO vorhanden, cg)
+:: Set Security, Application and System log maximum file size to 4 GB
+wevtutil sl System /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
+wevtutil sl Application /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
+wevtutil sl Security /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
+:: Set Powershell and SysMon log maximum file size to 1 GB
 wevtutil sl Microsoft-Windows-PowerShell/Operational /ms:1073741824
-:: (aktiviert da Sysmon verwendet wird, cg)
 wevtutil sl Microsoft-Windows-Sysmon/Operational /ms:1073741824 
 
 :: Set all other important logs to 128 MB. Increase or decrease to fit your environment.
-:: wevtutil sl System /ms:134217728 (deaktivieren wir da bereits in GPO vorhanden, cg)
-:: wevtutil sl Application /ms:134217728 (deaktivieren wir da bereits in GPO vorhanden, cg)
 wevtutil sl "Microsoft-Windows-Windows Defender/Operational" /ms:134217728
 wevtutil sl "Microsoft-Windows-Bits-Client/Operational" /ms:134217728
 wevtutil sl "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall" /ms:134217728
