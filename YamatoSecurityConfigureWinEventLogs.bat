@@ -21,9 +21,10 @@
 :: 128 MB: 134217728
 
 :: Set Security, Application and System log maximum file size to 4 GB
-wevtutil sl System /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
-wevtutil sl Application /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
-wevtutil sl Security /ms:4294901760 (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
+:: (brauchen wir eigentlich nicht, da bereits in GPO vorhanden, cg)
+wevtutil sl System /ms:4294901760 
+wevtutil sl Application /ms:4294901760
+wevtutil sl Security /ms:4294901760
 :: Set Powershell and SysMon log maximum file size to 1 GB
 wevtutil sl Microsoft-Windows-PowerShell/Operational /ms:1073741824
 wevtutil sl Microsoft-Windows-Sysmon/Operational /ms:1073741824 
